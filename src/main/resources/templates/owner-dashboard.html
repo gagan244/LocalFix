@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Dashboard - LocalFix Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body class="bg-light">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="/owner/dashboard">LocalFix - Owner Dashboard</a>
+            <div class="navbar-nav ms-auto align-items-center">
+                <span class="text-light me-3 small">Logged in as <strong>Owner</strong></span>
+                <a class="nav-link btn btn-outline-danger btn-sm text-light px-3" href="/owner/logout">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4 py-4">
+
+        <!-- Flash alert -->
+        <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${successMessage}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h4 class="fw-bold mb-0">Customer Service Requests</h4>
+                <small class="text-muted">Manage incoming repair jobs, technician assignments, and cost updates</small>
+            </div>
+            <a href="/create-request" target="_blank" class="btn btn-primary btn-sm">+ Log New Request</a>
+        </div>
+
+        <!-- Requests Table -->
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light small text-uppercase">
+                        <tr>
+                            <th>Request ID</th>
+                            <th>Customer & Device</th>
+                            <th>Problem</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                            <th>Assigned Tech</th>
+                            <th>Est. Cost</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="req : ${requests}">
+                            <td>
+                                <strong class="font-monospace text-primary" th:text="${req.requestId}"></strong>
+                            </td>
+                            <td>
+                                <div class="fw-semibold" th:text="${req.customerName}"></div>
+                                <small class="text-muted" th:text="${req.deviceType} + ' (' + ${req.brandModel} + ')'"></small>
+                            </td>
+                            <td style="max-width: 260px;">
+                                <div class="text-truncate small" th:text="${req.problemDescription}"></div>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${req.priority == 'EMERGENCY' ? 'bg-danger' : (req.priority == 'HIGH' ? 'bg-warning text-dark' : 'bg-secondary')}"
+                                      th:text="${req.priority}">
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${req.status.name() == 'COMPLETED' ? 'bg-success' : (req.status.name() == 'IN_PROGRESS' ? 'bg-primary' : (req.status.name() == 'ASSIGNED' ? 'bg-info text-dark' : 'bg-warning text-dark'))}"
+                                      th:text="${req.status}">
+                                </span>
+                            </td>
+                            <td>
+                                <span th:if="${req.technician != null}" th:text="${req.technician.name}" class="fw-medium"></span>
+                                <span th:if="${req.technician == null}" class="text-muted small fst-italic">Unassigned</span>
+                            </td>
+                            <td>
+                                <span class="fw-bold" th:text="'$' + ${#numbers.formatDecimal(req.estimatedCost, 1, 2)}"></span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <!-- Assign Tech Modal Trigger -->
+                                    <button class="btn btn-outline-primary" data-bs-toggle="modal" th:data-bs-target="'#assignModal-' + ${req.id}">
+                                        Assign
+                                    </button>
+                                    <!-- Update Status Modal Trigger -->
+                                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" th:data-bs-target="'#updateModal-' + ${req.id}">
+                                        Update
+                                    </button>
+                                </div>
+
+                                <!-- Assign Modal -->
+                                <div class="modal fade" th:id="'assignModal-' + ${req.id}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form th:action="@{'/owner/requests/' + ${req.id} + '/assign'}" method="post">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Assign Technician - <span th:text="${req.requestId}"></span></h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <label class="form-label fw-semibold">Select Field Technician</label>
+                                                    <select name="technicianId" class="form-select">
+                                                        <option value="">-- None (Unassigned) --</option>
+                                                        <option th:each="tech : ${technicians}" 
+                                                                th:value="${tech.id}" 
+                                                                th:selected="${req.technician != null && req.technician.id == tech.id}"
+                                                                th:text="${tech.name} + ' (' + ${tech.specialty} + ' - ' + ${tech.status} + ')'">
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                                                    <button type="submit" class="btn btn-primary btn-sm">Save Assignment</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Update Status Modal -->
+                                <div class="modal fade" th:id="'updateModal-' + ${req.id}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form th:action="@{'/owner/requests/' + ${req.id} + '/update'}" method="post">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Update Status & Cost - <span th:text="${req.requestId}"></span></h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Status</label>
+                                                        <select name="status" class="form-select">
+                                                            <option th:each="st : ${statuses}" 
+                                                                    th:value="${st}" 
+                                                                    th:selected="${req.status == st}" 
+                                                                    th:text="${st}">
+                                                            </option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Estimated Cost ($)</label>
+                                                        <input type="number" step="0.01" name="estimatedCost" th:value="${req.estimatedCost}" class="form-control">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Final Invoiced Cost ($)</label>
+                                                        <input type="number" step="0.01" name="actualCost" th:value="${req.actualCost}" placeholder="Optional final amount" class="form-control">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Resolution Notes / Remarks</label>
+                                                        <textarea name="notes" rows="2" class="form-control" th:text="${req.resolutionNotes}" placeholder="Describe repair outcome or part replacement..."></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                                                    <button type="submit" class="btn btn-primary btn-sm">Update Request</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

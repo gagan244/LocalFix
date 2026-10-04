@@ -1,0 +1,8 @@
+{
+  "name": "LocalFix - Service Request & Technician Management",
+  "description": "Full-stack application for managing customer service requests, technician assignments, request status, and estimated service costs.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
